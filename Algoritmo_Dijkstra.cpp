@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
@@ -180,24 +181,64 @@ class EnviosSantuarios {
 
 int main() {
     EnviosSantuarios gm;
-    
-    // Entradas manuales siguiendo el ejemplo exacto
-    gm.AgregarEntrega(1, 2);
-    gm.AgregarEntrega(4, 4);
-    gm.AgregarEntrega(2, 10);
-    gm.AgregarEntrega(3, 4);
+    string linea;
 
-    gm.agregarSendero(1, 2, 4, 18);
-    gm.agregarSendero(1, 4, 10, 25);
-    gm.agregarSendero(1, 3, 6, 10);
-    gm.agregarSendero(2, 3, 9, 10);
-    gm.agregarSendero(2, 4, 3, 20);
-    gm.agregarSendero(3, 4, 5, 18);
+    cout << "--- [DEBUG] Iniciando lectura con sstream ---" << endl;
 
-    int inicio;
-    cin >> inicio; // Ingresa 1
+    // Leemos el archivo línea por línea hasta el final
+    while (getline(cin, linea)) {
+        // Ignorar líneas vacías
+        if (linea.empty()) continue;
 
-    gm.procesarViaje(inicio);
+        stringstream ss(linea);
+        int v1, v2, v3, v4;
+        int conteo = 0;
+        int temp;
+
+        // Contamos cuántos números hay en esta línea específica
+        stringstream buscador(linea);
+        while (buscador >> temp) {
+            conteo++;
+        }
+
+        // Clasificamos según la cantidad de números
+        if (conteo == 2) {
+            // Es una Entrega (S K)
+            if (ss >> v1 >> v2) {
+                cout << "[DEBUG] Entrega: " << v1 << " " << v2 << endl;
+                gm.AgregarEntrega(v1, v2);
+            }
+        } 
+        else if (conteo == 4) {
+            // Es un Sendero (A B T M)
+            if (ss >> v1 >> v2 >> v3 >> v4) {
+                cout << "[DEBUG] Sendero: " << v1 << " " << v2 << " " << v3 << " " << v4 << endl;
+                gm.agregarSendero(v1, v2, v3, v4);
+            }
+        } 
+        else if (conteo == 1) {
+            // Es el Punto de Inicio (I)
+            if (ss >> v1) {
+                cout << "[DEBUG] Inicio detectado: " << v1 << endl;
+                cout << "--- [EJECUCIÓN] procesarViaje ---" << endl;
+                gm.procesarViaje(v1);
+            }
+        }
+    }
 
     return 0;
 }
+
+/*
+1 2 
+4 4 
+2 10 
+3 4 
+1 2 3 18 
+1 4 8 25 
+1 3 3 10 
+2 3 5 10 
+2 4 4 20 
+3 4 2 18 
+1 
+*/
