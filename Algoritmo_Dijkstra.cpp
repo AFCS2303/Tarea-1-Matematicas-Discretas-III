@@ -1,160 +1,203 @@
 #include <iostream>
-#include <string>
+
 using namespace std;
 
-template <class T> 
-struct Nodo{
-    T Santuario;
-    T Peso;
-    T Tiempo;
-    T Estabilidad;   
-    Nodo *Siguiente;
-    Nodo *Anterior;
-    Nodo *Temp;
+const int INF_MANUAL = 2147483647;
+
+struct Arista {
+    int Destino;
+    int Time;
+    int Estabilidad;
+    Arista* Next;
+    Arista(int d, int t, int m, Arista* sig) : Destino(d), Time(t), Estabilidad(m), Next(sig) {}
 };
-template <class T> 
-class DobleLinkedList
-{
+
+struct NodoSantuario {
+    int id;
+    int distanciaMin;
+    NodoSantuario* padre;
+    bool visitado;
+    Arista* adyacencia;
+    NodoSantuario* Next;
+
+    NodoSantuario(int _id) : id(_id), distanciaMin(INF_MANUAL), padre(nullptr), visitado(false), adyacencia(nullptr), Next(nullptr) {}
+};
+
+struct Entrega {
+    int santuario;
+    int peso;
+    Entrega* Next;
+    Entrega(int s, int k) : santuario(s), peso(k), Next(nullptr) {}
+};
+
+class EnviosSantuarios {
     private:
-        int Size;
-        Nodo<T> *Head;
-        Nodo<T> *Tail;
-    
+        NodoSantuario* Head;
+        Entrega* listaEntregas;
+        Entrega* ultimaEntrega;
+        int tiempoTotal;
+
     public:
-        DobleLinkedList(): Size (0), Head (nullptr), Tail (nullptr){}
+        EnviosSantuarios() : Head(nullptr), listaEntregas(nullptr), ultimaEntrega(nullptr), tiempoTotal(0) {}
 
-        void Insert(T Dato) {
-            Nodo<T> *NewNodo = new Nodo<T>();
-            NewNodo->Santuario = Dato; // Asumo que 'Santuario' es tu variable de dato
-
-            if (Head == nullptr) { // Caso 1: Lista vacía
-                Head = NewNodo;
-                Tail = NewNodo;
-                NewNodo->Siguiente = nullptr;
-                NewNodo->Anterior = nullptr;
-            } 
-            else { // Caso 2: Insertar después de Head
-                NewNodo->Siguiente = Head->Siguiente;
-                NewNodo->Anterior = Head;
-
-                if (Head->Siguiente != nullptr) {
-                    // Solo si hay un nodo después de Head, actualizamos su puntero Anterior
-                    Head->Siguiente->Anterior = NewNodo;
-                } else {
-                    // Si no había nadie después de Head, el nuevo nodo es ahora el Tail
-                    Tail = NewNodo;
-                }
-                
-                Head->Siguiente = NewNodo;
-            }
-            Size++;
+        void AgregarSantuario(int id) {
+            if (FindNode(id)) return;
+            NodoSantuario* nuevo = new NodoSantuario(id);
+            nuevo->Next = Head;
+            Head = nuevo;
         }
 
-        void Eliminar (T Dato){
-            if (Head == nullptr) return;
+        NodoSantuario* FindNode(int id) {
+            NodoSantuario* temp = Head;
+            while (temp) {
+                if (temp->id == id) return temp;
+                temp = temp->Next;
+            }
+            return nullptr;
+        }
 
-            Nodo<T> *temp = Head;
+        void AgregarEntrega(int s, int k) {
+            Entrega* nueva = new Entrega(s, k);
+            if (!listaEntregas) {
+                listaEntregas = ultimaEntrega = nueva;
+            } else {
+                ultimaEntrega->Next = nueva;
+                ultimaEntrega = nueva;
+            }
+        }
 
+        void agregarSendero(int a, int b, int t, int m) {
+            AgregarSantuario(a);
+            AgregarSantuario(b);
+            NodoSantuario* NodoA = FindNode(a);
+            NodoSantuario* NodoB = FindNode(b);
+            NodoA->adyacencia = new Arista(b, t, m, NodoA->adyacencia);
+            NodoB->adyacencia = new Arista(a, t, m, NodoB->adyacencia);
+        }
+
+        void reiniciarDijkstra() {
+            NodoSantuario* temp = Head;
+            while (temp) {
+                temp->distanciaMin = INF_MANUAL;
+                temp->visitado = false;
+                temp->padre = nullptr;
+                temp = temp->Next;
+            }
+        }
+
+        bool ejecutarDijkstra(int origen, int destino, int pesoCarga) {
+            reiniciarDijkstra();
+            NodoSantuario* inicio = FindNode(origen);
+            if (!inicio) return false;
             
-            if (Dato == temp->info){
-                Nodo<T> *Eliminar = temp->Siguiente;
+            inicio->distanciaMin = 0;
 
-                temp -> Siguiente = Eliminar -> Siguiente;
-                Eliminar->Siguiente->Anterior = temp;
+            while (true) {
+                NodoSantuario* NodoActual = nullptr;
+                NodoSantuario* NodoTemporal = Head;
 
-                delete Eliminar;
-                Size--;
-                return;
+                // 1. Seleccionar el nodo no visitado con la distancia mínima actual
+                while (NodoTemporal) {
+                    
+                    if (!NodoTemporal->visitado && NodoTemporal->distanciaMin != INF_MANUAL) {
+                        if (!NodoActual || NodoTemporal->distanciaMin < NodoActual->distanciaMin) {
+                            NodoActual = NodoTemporal;
+                        }
+                    }
+                    NodoTemporal = NodoTemporal->Next;
+                }
 
+                //Break Si no hay mas Nodos
+                if (!NodoActual || NodoActual->id == destino) break;
+
+                NodoActual->visitado = true;
+
+                //ExploradorCaminos se encargar de buscar los posibles caminos y cual es el mejor
+                Arista* ExploradorCaminos = NodoActual->adyacencia;
+                while (ExploradorCaminos) {
+                    // Si cumple con la estabilidad, sigue
+                    if (ExploradorCaminos->Estabilidad >= pesoCarga) {
+                        NodoSantuario* NodoVecino = FindNode(ExploradorCaminos->Destino);
+                        //si no esta visitado busca
+                        if (NodoVecino && !NodoVecino->visitado) {
+                            int nuevaDistancia = NodoActual->distanciaMin + ExploradorCaminos->Time;
+                            if (nuevaDistancia < NodoVecino->distanciaMin) {
+                                NodoVecino->distanciaMin = nuevaDistancia;
+                                NodoVecino->padre = NodoActual;
+                            }
+                        }
+                    }
+                    ExploradorCaminos = ExploradorCaminos->Next;
+                }
             }
 
-
-            while (temp->Siguiente != nullptr && Dato != temp->Siguiente->info) { // 1 2 3 4 5 6 5
-
-                temp = temp->Siguiente;
-            }
-
-            if (temp->Siguiente == nullptr){
-                return;
-            }
-
-            Nodo<T> *Eliminar = temp->Siguiente;
-
-            temp -> Siguiente = Eliminar -> Siguiente;
-            Eliminar->Siguiente->Anterior = temp;
-
-            delete Eliminar;
-            Size--;
-
-
+            NodoSantuario* NodoDestino = FindNode(destino);
+            // Retorna true solo si el destino fue alcanzado 
+            return (NodoDestino && NodoDestino->distanciaMin != INF_MANUAL);
         }
 
-        int GetHead (){
-            if (Head == nullptr) return 0; 
-            return Head->Santuario;
-
-        }
-
-       void ShowAll(){
-            Nodo<T> *temp = Head;
-            while (temp != nullptr){
-                cout << temp->Santuario;
-                temp = temp->Siguiente;
+        void imprimirRutaRecursiva(NodoSantuario* n, bool esPrimerNodoAbsoluto) {
+            if (!n) return;
+            imprimirRutaRecursiva(n->padre, esPrimerNodoAbsoluto);
+            // Si es el primer tramo del viaje, imprimimos todo.
+            // Si no, evitamos imprimir el origen del tramo porque ya se imprimió como destino del anterior.
+            if (esPrimerNodoAbsoluto || n->padre != nullptr) {
+                cout << n->id << " ";
             }
-            cout << endl;
         }
 
+        void procesarViaje(int inicioMensajero) {
+            int actualUbicacion = inicioMensajero;
+            Entrega* Entregado = listaEntregas;
+            bool primerTramoDelViaje = true;
 
+            // 1. Calcular el peso total inicial
+            int pesoEnMochila = 0;
+            Entrega* temp = listaEntregas;
+            while (temp) {
+                pesoEnMochila += temp->peso;
+                temp = temp->Next;
+            }
 
+            while (Entregado) {
+                // 2. Ejecutar Dijkstra con el peso acumulado actual
+                if (ejecutarDijkstra(actualUbicacion, Entregado->santuario, pesoEnMochila)) {
+                    NodoSantuario* destNode = FindNode(Entregado->santuario);
+                    tiempoTotal += destNode->distanciaMin;
+                    imprimirRutaRecursiva(destNode, primerTramoDelViaje);
+
+                    // 3. Al entregar, el peso disminuye
+                    pesoEnMochila -= Entregado->peso; 
+
+                    actualUbicacion = Entregado->santuario;
+                    primerTramoDelViaje = false;
+                }
+                Entregado = Entregado->Next;
+            }
+            cout << endl << tiempoTotal << endl;
+        }
 };
 
-
-int main (){
-
-
-    DobleLinkedList<int> L1;
-    int Santuario, PesoMagico;
-    int Contador = 1;
-    int CriterioDeParada;
-
-    cout << "Ingrese Santuario ";
-    cin >> Santuario;
-    L1.Insert(Santuario);
-
-    while (true){
-
-        if (Contador == 1){
-            cout << "primer if ";
-            CriterioDeParada = Santuario;
-        }
-
-        cout << "Ingrese PesoMagico ";
-        cin >> PesoMagico;
-
-
-        Contador++;
-        cout << "Ingrese Santuario ";
-        cin >> Santuario;
-        L1.Insert(Santuario);
-
-        
-
-        cout<< " EL HEAD ES:" << L1.GetHead() << endl;
-        if (CriterioDeParada == Santuario){
-            cout << "segundo if ";
-            break;
-        }
-        
-
-
-
-
-
-
-    }
+int main() {
+    EnviosSantuarios gm;
     
+    // Entradas manuales siguiendo el ejemplo exacto
+    gm.AgregarEntrega(1, 2);
+    gm.AgregarEntrega(4, 4);
+    gm.AgregarEntrega(2, 10);
+    gm.AgregarEntrega(3, 4);
 
-    cout << "sali del while";
+    gm.agregarSendero(1, 2, 4, 18);
+    gm.agregarSendero(1, 4, 10, 25);
+    gm.agregarSendero(1, 3, 6, 10);
+    gm.agregarSendero(2, 3, 9, 10);
+    gm.agregarSendero(2, 4, 3, 20);
+    gm.agregarSendero(3, 4, 5, 18);
 
+    int inicio;
+    cin >> inicio; // Ingresa 1
 
+    gm.procesarViaje(inicio);
+
+    return 0;
 }
