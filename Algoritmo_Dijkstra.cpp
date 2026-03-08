@@ -97,7 +97,7 @@ class EnviosSantuarios {
                 NodoSantuario* NodoActual = nullptr;
                 NodoSantuario* NodoTemporal = Head;
 
-                // 1. Seleccionar el nodo no visitado con la distancia mínima actual
+                //nodo no buscado y con minima actual
                 while (NodoTemporal) {
                     
                     if (!NodoTemporal->visitado && NodoTemporal->distanciaMin != INF_MANUAL) {
@@ -152,7 +152,7 @@ class EnviosSantuarios {
             Entrega* Entregado = listaEntregas;
             bool primerTramoDelViaje = true;
 
-            // 1. Calcular el peso total inicial
+            //Calcular el peso total inicial
             int pesoEnMochila = 0;
             Entrega* temp = listaEntregas;
             while (temp) {
@@ -161,13 +161,13 @@ class EnviosSantuarios {
             }
 
             while (Entregado) {
-                // 2. Ejecutar Dijkstra con el peso acumulado actual
+                //Dijkstra
                 if (ejecutarDijkstra(actualUbicacion, Entregado->santuario, pesoEnMochila)) {
                     NodoSantuario* destNode = FindNode(Entregado->santuario);
                     tiempoTotal += destNode->distanciaMin;
                     imprimirRutaRecursiva(destNode, primerTramoDelViaje);
 
-                    // 3. Al entregar, el peso disminuye
+                    //Decrecimiento del precio
                     pesoEnMochila -= Entregado->peso; 
 
                     actualUbicacion = Entregado->santuario;
@@ -183,11 +183,9 @@ int main() {
     EnviosSantuarios gm;
     string linea;
 
-    cout << "--- [DEBUG] Iniciando lectura con sstream ---" << endl;
-
-    // Leemos el archivo línea por línea hasta el final
+    // Lectura total del archivo
     while (getline(cin, linea)) {
-        // Ignorar líneas vacías
+        // Obviar lineas vacias
         if (linea.empty()) continue;
 
         stringstream ss(linea);
@@ -195,7 +193,7 @@ int main() {
         int conteo = 0;
         int temp;
 
-        // Contamos cuántos números hay en esta línea específica
+        //números en esta línea específica
         stringstream buscador(linea);
         while (buscador >> temp) {
             conteo++;
@@ -203,24 +201,19 @@ int main() {
 
         // Clasificamos según la cantidad de números
         if (conteo == 2) {
-            // Es una Entrega (S K)
             if (ss >> v1 >> v2) {
-                cout << "[DEBUG] Entrega: " << v1 << " " << v2 << endl;
                 gm.AgregarEntrega(v1, v2);
             }
         } 
         else if (conteo == 4) {
             // Es un Sendero (A B T M)
             if (ss >> v1 >> v2 >> v3 >> v4) {
-                cout << "[DEBUG] Sendero: " << v1 << " " << v2 << " " << v3 << " " << v4 << endl;
                 gm.agregarSendero(v1, v2, v3, v4);
             }
         } 
         else if (conteo == 1) {
             // Es el Punto de Inicio (I)
             if (ss >> v1) {
-                cout << "[DEBUG] Inicio detectado: " << v1 << endl;
-                cout << "--- [EJECUCIÓN] procesarViaje ---" << endl;
                 gm.procesarViaje(v1);
             }
         }
@@ -230,7 +223,8 @@ int main() {
 }
 
 /*
-1 2 
+CASO DE PRUEBA 
+1 2
 4 4 
 2 10 
 3 4 
